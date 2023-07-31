@@ -1,14 +1,19 @@
 ---
 title: Info3 - Lab 07 - Testing
 author: [Aaron Rau, Jonas Trenkler]
-date: 2023-06-19
+date: 2023-07-31
 lang: "en-US"
 keywords: [testing, TDD]
 ---
 
 # Info3 - Lab 07 - Testing
 
+Group: Aaron Rau, Jonas Trenkler  
+Repository: <https://github.com/JonasTrenkler/info3-lab07-testing> 
+
 ## 1. Getting Started
+
+### Closed-Boxed Testing and Analysis
 
 Closed-box tests only have the interface to work with.
 A method that returns the absolute of an integer should have a simple signature like `absolute(i)`, with only a single parameter, expected to be an integer.
@@ -17,9 +22,9 @@ While using type-hints helps to reduce errors while writing the code, the method
 
 Therefore this is one equivalence class: *Invalid input* or `NaN` (though not `math.nan` or `float("nan")`).
 The implementation has to decide how to handle this if there is no specification.
-Without knowledge of that, it is impossible to design a closed boxed test (unless you try it out).
 One reasonable way to handle invalid inputs would be to throw a [`TypeError`](https://docs.python.org/3/library/exceptions.html#TypeError).
 Another less obvious way would be to use error codes, for example negative integers.
+The invalid input could also just pass through unmodified.
 
 Apart from that there are numbers, not differentiating between integers and floating point numbers in the following equivalence classes:
 
@@ -52,3 +57,121 @@ From the above we could argue that there are three equivalence classes:
 2. numbers from -0.0 to negative infinity
 3. invalid inputs, NaN
 
+### Open-Box Tests and Source Code Analysis
+
+The method only has for lines of code and a singe if-else, resulting in two branches to be tested:
+
+```python
+def absolute_value_of(x):
+    if x < -1:
+        return -x
+    else:
+        return x
+```
+
+By just looking at the code, a kind of static code analysis, it is obvious that the condition `x < -1` will not return the absolute value of `-1` correctly.
+
+The module [Coverage](https://coverage.readthedocs.io/en/7.2.7/branch.html) can generate coverage reports.
+It is also accessible using the [pytest-cov plugin](https://pytest-cov.readthedocs.io/en/latest/readme.html).
+But since `pytest-cov` can only test modules, it will provide coverage data for the `tax_time` module as well:
+
+```terminal
+
+╰─ pytest --cov-report term-missing --cov=python tests/test_absolute.py --cov-branch
+
+======================== test session starts =========================platform linux -- Python 3.11.3, pytest-7.4.0, pluggy-1.2.0
+rootdir: /home/jonas/Studium/B15_Info3/labs/info3-lab07-testing/a_open_and_closed_box_tests
+plugins: cov-4.1.0
+collected 0 items
+
+---------- coverage: platform linux, python 3.11.3-final-0 -----------
+Name                 Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------
+python/absolute.py       4      3      2      0    17%   3-6
+python/tax_time.py      46     46     14      0     0%   2-65
+----------------------------------------------------------------
+TOTAL                   50     49     16      0     2%
+
+======================= no tests ran in 0.02s ========================
+```
+
+Using the `coverage` CLI directly, two calls are necessary, one to generate the coverage data and one to display the report.
+But this way, the `include` parameter is available, which let's us limit the report to the file `absolute.py` (see [SO issue](https://stackoverflow.com/questions/46652192/py-test-gives-coverage-py-warning-module-sample-py-was-never-imported))
+
+```terminal
+╰─ coverage run --branch -m pytest tests/test_absolute.py -v &&
+       coverage report --include=python/absolute.py
+```
+
+To cover all branches, two tests are sufficient.
+
+```python
+from python.absolute import absolute_value_of
+
+def test_1():
+    assert absolute_value_of(1) == 1
+
+def test_minus_2():
+    assert absolute_value_of(-2) == 2
+```
+
+```terminal
+╰─ coverage run --branch -m pytest tests/test_absolute.py -v &&
+       coverage report --include=python/absolute.py
+
+======================== test session starts =========================platform linux -- Python 3.11.3, pytest-7.4.0, pluggy-1.2.0 -- /home/jonas/.local/share/virtualenvs/info3-lab07-testing-z5eA380H/bin/python
+cachedir: .pytest_cache
+rootdir: /home/jonas/Studium/B15_Info3/labs/info3-lab07-testing/a_open_and_closed_box_tests
+plugins: cov-4.1.0
+collected 2 items
+
+tests/test_absolute.py::test_1 PASSED                          [ 50%]
+tests/test_absolute.py::test_minus_2 PASSED                    [100%]
+
+========================= 2 passed in 0.02s ==========================
+Name                 Stmts   Miss Branch BrPart  Cover
+------------------------------------------------------
+python/absolute.py       4      0      2      0   100%
+------------------------------------------------------
+TOTAL                    4      0      2      0   100%
+
+```
+
+While these two tests both pass and cover all branches, they to not reveal the error in the method.
+Testing the edge cases, so one value above and below the conditions, yields the following tests for the number equivalence classes positive and negative integers.
+
+```terminal
+╰─ coverage run --branch -m pytest tests/test_absolute.py -vv &&
+       coverage report --include=python/absolute.py
+
+======================== test session starts =========================platform linux -- Python 3.11.3, pytest-7.4.0, pluggy-1.2.0 -- /home/jonas/.local/share/virtualenvs/info3-lab07-testing-z5eA380H/bin/python
+cachedir: .pytest_cache
+rootdir: /home/jonas/Studium/B15_Info3/labs/info3-lab07-testing/a_open_and_closed_box_tests
+plugins: cov-4.1.0
+collected 5 items
+
+tests/test_absolute.py::test_1 PASSED                          [ 20%]
+tests/test_absolute.py::test_0 PASSED                          [ 40%]
+tests/test_absolute.py::test_negative_0 PASSED                 [ 60%]
+tests/test_absolute.py::test_negative_1 FAILED                 [ 80%]
+tests/test_absolute.py::test_negative_2 PASSED                 [100%]
+
+============================== FAILURES ==============================
+__________________________ test_negative_1 ___________________________
+    def test_negative_1():
+>       assert absolute_value_of(-1) == 1
+E       assert -1 == 1
+E        +  where -1 = absolute_value_of(-1)
+
+tests/test_absolute.py:13: AssertionError
+====================== short test summary info =======================
+
+FAILED tests/test_absolute.py::test_negative_1 - assert -1 == 1
+
+==================== 1 failed, 4 passed in 0.12s =====================
+```
+
+As predicted, the test for `-1` failed.
+Blindly writing open-box tests for all branches, or line coverage does not necessarily reveal problematic code.
+It is necessary to think about the expected input and output of the method, the equivalence classes and edge cases as well.
+Tests for the equivalence class of invalid input are not really feasible without an agreement how this should be handled.

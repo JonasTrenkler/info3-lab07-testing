@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 pytest = "*"
 ipython = "*"
+python-lsp-server = "*"
+pytest-cov = "*"
 
 [dev-packages]
 
