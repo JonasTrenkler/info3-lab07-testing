@@ -175,3 +175,62 @@ As predicted, the test for `-1` failed.
 Blindly writing open-box tests for all branches, or line coverage does not necessarily reveal problematic code.
 It is necessary to think about the expected input and output of the method, the equivalence classes and edge cases as well.
 Tests for the equivalence class of invalid input are not really feasible without an agreement how this should be handled.
+
+## 2. Test Driven Development
+With the knowledge of how a linked list works and the already existing tests the implementation
+was quite easy. It's hard to say though if this approach is quicker than the traditional one,
+since the tests were already there in this case. If the tests had to be written as well, it might
+have been more overhead.
+
+The only standard library dependency of this implementation is the Self class from the `typing`
+module, but that wouldn't be necessary either. The copy method could have been solved by using
+a function from the standard library.
+
+```python
+from copy import copy
+
+def copy(self) -> Self:
+    return copy(self)
+```
+
+But since that is rather boring the final implementation looks like this:
+
+```python
+ def copy(self) -> Self:
+    copy = self.shallow_copy()
+    curr = self.next
+
+    while curr is not None:
+        copy.append(curr.data)
+        curr = curr.next
+
+    return copy
+```
+
+`shallow_copy` constructs a new `Node` that only contains the `data` of the current object, not
+the next node.
+
+The main idea behind most of the methods is a while loop that checks if either the current or
+the next node is not `None`. The reason for not all of the loops using the same condition is
+that some methods need to handle the first node differently. The general pattern looks like this:
+
+```python
+curr: Node = self
+
+while curr is not None:
+    # do some stuff
+    curr = curr.next
+```
+
+Even though all of the tests are green, there might still be some bugs. The `delete` method,
+for example, immediately returns self.next if the nodes data matches the input data. If deleting
+all nodes if that name is the desired behaviour it would work correctly. Likewise, if the expected
+behaviour is that only the first match is deleted the implementation would also cause issues.
+
+One more thing to note is that the `from_str` function strips the spaces from each element that
+is to be added. This means that `'a,b'` and `'a, b'` are equivalent. This would cause issues
+if trailing spaces are expected to hold meaning.
+
+Generally speaking it is not clear whether or not test driven development improves productivity and
+maintainability and reduces the number of bugs in the final implementation. Working with the
+already existing tests felt pretty efficient though.
