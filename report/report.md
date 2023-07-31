@@ -177,6 +177,7 @@ It is necessary to think about the expected input and output of the method, the 
 Tests for the equivalence class of invalid input are not really feasible without an agreement how this should be handled.
 
 ## 2. Test Driven Development
+
 With the knowledge of how a linked list works and the already existing tests the implementation
 was quite easy. It's hard to say though if this approach is quicker than the traditional one,
 since the tests were already there in this case. If the tests had to be written as well, it might
